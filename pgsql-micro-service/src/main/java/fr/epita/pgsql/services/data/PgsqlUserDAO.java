@@ -1,0 +1,254 @@
+package fr.epita.pgsql.services.data;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.inject.Inject;
+
+import org.springframework.stereotype.Repository;
+
+import fr.epita.pgsql.connection.DBConnection;
+import fr.epita.pgsql.datamodel.Profile;
+import fr.epita.pgsql.datamodel.User;
+import fr.epita.services.business.PgsqlAddressBusinessException;
+import fr.epita.services.business.PgsqlProfileBusinessException;
+import fr.epita.services.business.PgsqlUserBusinessException;
+
+@Repository
+public class PgsqlUserDAO{
+	
+	@Inject
+	PgsqlProfileDAO profileDAO;
+	
+	/* Get users list
+	 * return: List<User>
+	 */
+	public List<User> listUsers() throws PgsqlUserBusinessException{
+		
+		List<User> users = new ArrayList<>();
+		try {
+			DBConnection db = new DBConnection();
+			PreparedStatement pstmt = db.getConnection().prepareStatement("SELECT * FROM \"USERS\"");
+			ResultSet rs = pstmt.executeQuery();
+			
+			while(rs.next()) {
+				User user = new User();
+				user.setUsername(rs.getString("username"));
+				user.setUser_id(rs.getLong("user_id"));
+				user.setPassword("***");
+				users.add(user);
+			}
+			
+			if(users.size() == 0) {
+				throw new PgsqlUserBusinessException("User list is empty.");
+			}
+			
+			pstmt.close();
+			rs.close();
+			db.close();
+		}catch (SQLException e) {
+			e.printStackTrace();
+			throw new PgsqlUserBusinessException("Unable to retrieve users data.", e);
+		}
+		return users;
+	}
+	
+	/* Get user detail
+	 * params: long id
+	 * return: User 
+	 */
+	public User getUserById(long id) throws PgsqlUserBusinessException, PgsqlProfileBusinessException, PgsqlAddressBusinessException {
+		User user = new User();
+		DBConnection db;
+		try {
+			db = new DBConnection();
+			
+			// Select user by id from USERS table
+			PreparedStatement pstmt = db.getConnection().prepareStatement("SELECT * FROM \"USERS\" WHERE user_id=?");
+			pstmt.setLong(1, id);
+			ResultSet rs = pstmt.executeQuery();
+			if(rs.next()) {
+				user.setUser_id(rs.getLong("user_id"));
+				user.setUsername(rs.getString("username"));
+				user.setPassword("***");
+				
+				Profile profile = profileDAO.getProfileByUserId(rs.getLong("user_id"));
+				user.setProfile(profile);
+				
+				pstmt.close();
+				rs.close();
+				db.close();
+			}else {
+				pstmt.close();
+				rs.close();
+				db.close();
+				throw new PgsqlUserBusinessException("User does not exists.");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new PgsqlUserBusinessException("Unable to retrieve user's details.", e);
+		}
+	
+		return user;
+	}
+	
+	/* Add new user
+	 * params: User user
+	 * return: User
+	 */
+	public User addUser(User user) throws PgsqlUserBusinessException, PgsqlProfileBusinessException, PgsqlAddressBusinessException {
+		try {
+			DBConnection db = new DBConnection();
+			
+			// Check if user exists
+			String sqlQuery = "SELECT * FROM \"USERS\" WHERE username=?";
+			PreparedStatement pstmt = db.getConnection().prepareStatement(sqlQuery);
+			pstmt.setString(1, user.getUsername());
+			ResultSet rs = pstmt.executeQuery();
+			if(rs.next()) {
+				if(rs.getString("username").equals(user.getUsername())) {
+					throw new PgsqlUserBusinessException("Username already exists.");
+				}
+			}
+			
+			// Insert new user in the USERS table
+			sqlQuery = "INSERT INTO \"USERS\"(username, password) VALUES (?, ?)";
+			pstmt = db.getConnection().prepareStatement(sqlQuery, Statement.RETURN_GENERATED_KEYS);
+			pstmt.setString(1, user.getUsername());
+			pstmt.setString(2, user.getPassword());
+			int affectedRows = pstmt.executeUpdate();
+			if(affectedRows > 0) {
+				ResultSet r = pstmt.getGeneratedKeys();
+				if(r.next()) {
+					// Select recently added user
+					User addedUser = getUserById(r.getLong(1));
+					r.close();
+					rs.close();
+					pstmt.close();
+					db.close();
+					return addedUser;
+				}else {
+					rs.close();
+					pstmt.close();
+					db.close();
+					throw new PgsqlUserBusinessException("Recently added user not found.");
+				}
+			}else {
+				rs.close();
+				pstmt.close();
+				db.close();
+				throw new PgsqlUserBusinessException("User was not added successfully.");
+			}
+		}catch(SQLException e) {
+			e.printStackTrace();
+			throw new PgsqlUserBusinessException("Unable to add user.", e);
+		}
+	}
+	
+	/*
+	 * Update user's details
+	 * params: User user, long id
+	 * return: User
+	 */
+	public User updateUser(User user, long id) throws PgsqlUserBusinessException, PgsqlProfileBusinessException, PgsqlAddressBusinessException{
+		try {
+			DBConnection db = new DBConnection();
+			
+			// Check if user exists in the USERS table
+			getUserById(id);
+			
+			// Check if username exists in the USERS table
+			String sqlQuery = "SELECT * FROM \"USERS\" WHERE username=?";
+			PreparedStatement pstmt = db.getConnection().prepareStatement(sqlQuery);
+			pstmt.setString(1, user.getUsername());
+			ResultSet result = pstmt.executeQuery();
+			if(result.next()) {
+				if(result.getString("username").equals(user.getUsername()) && id != result.getLong("user_id")) {
+					throw new PgsqlUserBusinessException("Username is not available.");
+				}
+			}
+					
+			// Update user's details from USERS table
+			sqlQuery = "UPDATE \"USERS\" SET username=?, password=? WHERE user_id=?";
+			pstmt = db.getConnection().prepareStatement(sqlQuery);
+			pstmt.setString(1, user.getUsername());
+			pstmt.setString(2, user.getPassword());
+			pstmt.setLong(3, id);
+			int affectedRows = pstmt.executeUpdate();
+			if(affectedRows > 0) {
+				pstmt.close();
+				db.close();
+				return getUserById(id);
+			}else {
+				pstmt.close();
+				db.close();
+				throw new PgsqlUserBusinessException("User update unsuccessfull");
+			}
+		}catch(SQLException e) {
+			e.printStackTrace();
+			throw new PgsqlUserBusinessException("Unable to update user's details.", e);
+		}
+	}
+	
+	/* Delete user
+	 * params: long id
+	 * return: User
+	 */
+	public User deleteUser(long id) throws PgsqlUserBusinessException, PgsqlProfileBusinessException, PgsqlAddressBusinessException{
+		try {
+			DBConnection db = new DBConnection();
+			User user = getUserById(id);
+			String sqlQuery = "DELETE FROM \"USERS\" WHERE user_id=?";
+			PreparedStatement pstmt = db.getConnection().prepareStatement(sqlQuery);
+			pstmt.setLong(1, id);
+			int affectedRows = pstmt.executeUpdate();
+			if(affectedRows > 0) {
+				pstmt.close();
+				db.close();
+				return user;
+			}else {
+				pstmt.close();
+				db.close();
+				throw new PgsqlUserBusinessException("User is not deleted.");
+			}
+		}catch(SQLException e) {
+			e.printStackTrace();
+			throw new PgsqlUserBusinessException("Unable to delete user.", e);
+		}
+	}
+	
+	/* User login
+	 * params: String username, String password
+	 * return: User
+	 */
+	public User userLogin(String username, String password) throws PgsqlUserBusinessException, PgsqlProfileBusinessException, PgsqlAddressBusinessException{
+		try {
+			DBConnection db = new DBConnection();
+			String sqlQuery = "SELECT * FROM \"USERS\" WHERE username=? AND password=?";
+			PreparedStatement pstmt = db.getConnection().prepareStatement(sqlQuery);
+			pstmt.setString(1, username);
+			pstmt.setString(2, password);
+			ResultSet rs = pstmt.executeQuery();
+			if(rs.next()) {
+				User user = getUserById(rs.getLong("user_id"));
+				rs.close();
+				pstmt.close();
+				db.close();
+				return user;
+			}else {
+				rs.close();
+				pstmt.close();
+				db.close();
+				throw new PgsqlUserBusinessException("Username or password incorrect.");
+			}
+		}catch(SQLException e) {
+			e.printStackTrace();
+			throw new PgsqlUserBusinessException("Unable to login user.", e);
+		}
+	}
+	
+}
