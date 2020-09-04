@@ -12,6 +12,12 @@ public class DBConnection {
 	Connection connection;
 	
 	public DBConnection() throws SQLException {
+		try {
+			Class.forName("org.postgresql.Driver");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		connection = DriverManager.getConnection(pgsqlURL, pgsqlUser, pgsqlPass);
 	}
 	
