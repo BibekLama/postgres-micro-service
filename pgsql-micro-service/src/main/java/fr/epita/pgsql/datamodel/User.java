@@ -4,6 +4,7 @@ public class User {
 	private long user_id;
 	private String username;
 	private String password;
+	private Role role;
 	private Profile profile;
 	
 	
@@ -24,6 +25,12 @@ public class User {
 	}
 	public void setPassword(String password) {
 		this.password = password;
+	}
+	public Role getRole() {
+		return role;
+	}
+	public void setRole(Role role) {
+		this.role = role;
 	}
 	public Profile getProfile() {
 		return profile;

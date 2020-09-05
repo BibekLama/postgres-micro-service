@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import fr.epita.pgsql.connection.DBConnection;
 import fr.epita.pgsql.datamodel.Profile;
+import fr.epita.pgsql.datamodel.Role;
 import fr.epita.pgsql.datamodel.User;
 import fr.epita.services.business.PgsqlAddressBusinessException;
 import fr.epita.services.business.PgsqlProfileBusinessException;
@@ -23,6 +24,9 @@ public class PgsqlUserDAO{
 	
 	@Inject
 	PgsqlProfileDAO profileDAO;
+	
+	@Inject
+	PgsqlRoleDAO roleDAO;
 	
 	/* Get users list
 	 * return: List<User>
@@ -39,6 +43,8 @@ public class PgsqlUserDAO{
 				User user = new User();
 				user.setUsername(rs.getString("username"));
 				user.setUser_id(rs.getLong("user_id"));
+				Role role = roleDAO.getRoleById(rs.getLong("role_id"));
+				user.setRole(role);
 				user.setPassword("***");
 				users.add(user);
 			}
@@ -75,7 +81,8 @@ public class PgsqlUserDAO{
 				user.setUser_id(rs.getLong("user_id"));
 				user.setUsername(rs.getString("username"));
 				user.setPassword("***");
-				
+				Role role = roleDAO.getRoleById(rs.getLong("role_id"));
+				user.setRole(role);
 				Profile profile = profileDAO.getProfileByUserId(rs.getLong("user_id"));
 				user.setProfile(profile);
 				
@@ -116,33 +123,50 @@ public class PgsqlUserDAO{
 			}
 			
 			// Insert new user in the USERS table
-			sqlQuery = "INSERT INTO \"USERS\"(username, password) VALUES (?, ?)";
-			pstmt = db.getConnection().prepareStatement(sqlQuery, Statement.RETURN_GENERATED_KEYS);
-			pstmt.setString(1, user.getUsername());
-			pstmt.setString(2, user.getPassword());
-			int affectedRows = pstmt.executeUpdate();
-			if(affectedRows > 0) {
-				ResultSet r = pstmt.getGeneratedKeys();
-				if(r.next()) {
-					// Select recently added user
-					User addedUser = getUserById(r.getLong(1));
-					r.close();
-					rs.close();
-					pstmt.close();
-					db.close();
-					return addedUser;
-				}else {
-					rs.close();
-					pstmt.close();
-					db.close();
-					throw new PgsqlUserBusinessException("Recently added user not found.");
-				}
-			}else {
-				rs.close();
-				pstmt.close();
-				db.close();
-				throw new PgsqlUserBusinessException("User was not added successfully.");
+			Role role = null;
+			if(user.getRole() != null) {
+				role = roleDAO.getRoleByName(user.getRole().getRole());
 			}
+			User addedUser = null;
+			if(role != null) {
+				String sqlQuery1 = "INSERT INTO \"USERS\" (username, password, role_id) VALUES (?, ?, ?)";
+				PreparedStatement pstmt1 = db.getConnection().prepareStatement(sqlQuery1, Statement.RETURN_GENERATED_KEYS);
+				pstmt1.setString(1, user.getUsername());
+				pstmt1.setString(2, user.getPassword());
+				pstmt1.setLong(3, role.getRole_id());
+				int affectedRows = pstmt1.executeUpdate();
+				if(affectedRows > 0) {
+					ResultSet r = pstmt1.getGeneratedKeys();
+					if(r.next()) {
+						addedUser = getUserById(r.getLong(1));
+					}
+				}
+				pstmt1.close();
+			}else {
+				String sqlQuery1 = "INSERT INTO \"USERS\"(username, password) VALUES (?, ?)";
+				PreparedStatement pstmt1 = db.getConnection().prepareStatement(sqlQuery1, Statement.RETURN_GENERATED_KEYS);
+				pstmt1.setString(1, user.getUsername());
+				pstmt1.setString(2, user.getPassword());
+				int affectedRows = pstmt1.executeUpdate();
+				if(affectedRows > 0) {
+					ResultSet r = pstmt1.getGeneratedKeys();
+					if(r.next()) {
+						addedUser = getUserById(r.getLong(1));
+					}
+				}
+				pstmt1.close();
+			}
+			
+			rs.close();
+			pstmt.close();
+			db.close();
+			
+			if(addedUser != null) {
+				return addedUser;
+			}else {
+				throw new PgsqlUserBusinessException("Recently added user not found.");
+			}
+			
 		}catch(SQLException e) {
 			e.printStackTrace();
 			throw new PgsqlUserBusinessException("Unable to add user.", e);
@@ -173,12 +197,31 @@ public class PgsqlUserDAO{
 			}
 					
 			// Update user's details from USERS table
-			sqlQuery = "UPDATE \"USERS\" SET username=?, password=? WHERE user_id=?";
-			pstmt = db.getConnection().prepareStatement(sqlQuery);
-			pstmt.setString(1, user.getUsername());
-			pstmt.setString(2, user.getPassword());
-			pstmt.setLong(3, id);
-			int affectedRows = pstmt.executeUpdate();
+			Role role = null;
+			if(user.getRole() != null) {
+				role = roleDAO.getRoleByName(user.getRole().getRole());
+			}
+			
+			int affectedRows = 0;
+			if(role != null) {
+				String sqlQuery1 = "UPDATE \"USERS\" SET username=?, password=?, role_id=? WHERE user_id=?";
+				PreparedStatement pstmt1 = db.getConnection().prepareStatement(sqlQuery1);
+				pstmt1.setString(1, user.getUsername());
+				pstmt1.setString(2, user.getPassword());
+				pstmt1.setLong(3, role.getRole_id());
+				pstmt1.setLong(4, id);
+				affectedRows = pstmt1.executeUpdate();
+				pstmt1.close();
+			}else {
+				String sqlQuery1 = "UPDATE \"USERS\" SET username=?, password=? WHERE user_id=?";
+				PreparedStatement pstmt1 = db.getConnection().prepareStatement(sqlQuery1);
+				pstmt1.setString(1, user.getUsername());
+				pstmt1.setString(2, user.getPassword());
+				pstmt1.setLong(3, id);
+				affectedRows = pstmt1.executeUpdate();
+				pstmt1.close();
+			}
+			
 			if(affectedRows > 0) {
 				pstmt.close();
 				db.close();
