@@ -183,7 +183,11 @@ public class PgsqlProfileDAO {
 			
 			if(profile.getAddress().size() > 0) {
 				for(Address address: profile.getAddress()) {
-					addressDAO.updateAddress(address, address.getAddress_id());
+					if(address.getAddress_id() > 0) {
+						addressDAO.updateAddress(address, address.getAddress_id());
+					}else {
+						addressDAO.addAddress(address, id);
+					}
 				}
 			}
 			
