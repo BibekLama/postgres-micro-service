@@ -38,7 +38,7 @@ public class PgsqlProfileDAO {
 				Profile profile = new Profile();
 				profile.setName(rs.getString("name"));
 				profile.setProfile_id(rs.getLong("profile_id"));
-				profile.setBirth_year(rs.getLong("birdth_year"));
+				profile.setBirth_year(rs.getLong("birth_year"));
 				profile.setEmail(rs.getString("email"));
 				profile.setGender(rs.getString("gender"));
 				List<Address> address = addressDAO.getAddressByProfileId(rs.getLong("profile_id"));
@@ -78,7 +78,7 @@ public class PgsqlProfileDAO {
 				profile.setProfile_id(rs.getLong("profile_id"));
 				profile.setGender(rs.getString("gender"));
 				profile.setEmail(rs.getString("email"));
-				profile.setBirth_year(rs.getLong("birdth_year"));
+				profile.setBirth_year(rs.getLong("birth_year"));
 				List<Address> address = addressDAO.getAddressByProfileId(rs.getLong("profile_id"));
 				profile.setAddress(address);
 				return profile;
