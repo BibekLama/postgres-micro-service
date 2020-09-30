@@ -94,6 +94,27 @@ public class PgsqlProfileDAO {
 		return null;
 	}
 	
+	public boolean checkEmail(String email) throws PgsqlProfileBusinessException {
+		// Check if user's email exists
+		try {
+			DBConnection db = new DBConnection();
+			String sqlQuery = "SELECT * FROM \"PROFILES\" WHERE email=?";
+			PreparedStatement pstmt = db.getConnection().prepareStatement(sqlQuery);
+			pstmt.setString(1, email);
+			ResultSet rs = pstmt.executeQuery();
+			if(rs.next()) {
+				if(rs.getString("email").equals(email)) {
+					return true;
+				}
+			}
+		}catch(SQLException e) {
+			e.printStackTrace();
+			throw new PgsqlProfileBusinessException("Unable to insert profile.", e);
+		}
+		return false;
+			
+	}
+	
 	/* Add profile
 	 * params: Profile profile
 	 * return: Profile
@@ -101,17 +122,6 @@ public class PgsqlProfileDAO {
 	public Profile addProfile(Profile profile, long userId) throws PgsqlProfileBusinessException, PgsqlAddressBusinessException{
 		try {
 			DBConnection db = new DBConnection();
-			
-			// Check if user's email exists
-//			String sqlQuery = "SELECT * FROM \"PROFILES\" WHERE email=?";
-//			PreparedStatement pstmt = db.getConnection().prepareStatement(sqlQuery);
-//			pstmt.setString(1, profile.getEmail());
-//			ResultSet rs = pstmt.executeQuery();
-//			if(rs.next()) {
-//				if(rs.getString("email").equals(profile.getEmail())) {
-//					throw new PgsqlProfileBusinessException("Email already exists.");
-//				}
-//			}
 			
 			String sqlQuery = " INSERT INTO \"PROFILES\"(name, email, birth_year, gender, user_id) VALUES (?, ?, ?, ?, ?)";
 			PreparedStatement pstmt = db.getConnection().prepareStatement(sqlQuery,

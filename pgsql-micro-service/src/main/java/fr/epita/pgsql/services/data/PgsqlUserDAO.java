@@ -121,6 +121,11 @@ public class PgsqlUserDAO{
 					throw new PgsqlUserBusinessException("Username already exists.");
 				}
 			}
+			
+			// Check if email exists
+			if(profileDAO.checkEmail(user.getProfile().getEmail())) {
+				throw new PgsqlUserBusinessException("Email already exists.");
+			}
 	
 			
 			// Insert new user in the USERS table
