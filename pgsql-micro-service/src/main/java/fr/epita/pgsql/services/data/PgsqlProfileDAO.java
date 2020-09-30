@@ -103,18 +103,18 @@ public class PgsqlProfileDAO {
 			DBConnection db = new DBConnection();
 			
 			// Check if user's email exists
-			String sqlQuery = "SELECT * FROM \"PROFILES\" WHERE email=?";
-			PreparedStatement pstmt = db.getConnection().prepareStatement(sqlQuery);
-			pstmt.setString(1, profile.getEmail());
-			ResultSet rs = pstmt.executeQuery();
-			if(rs.next()) {
-				if(rs.getString("email").equals(profile.getEmail())) {
-					throw new PgsqlProfileBusinessException("Email already exists.");
-				}
-			}
+//			String sqlQuery = "SELECT * FROM \"PROFILES\" WHERE email=?";
+//			PreparedStatement pstmt = db.getConnection().prepareStatement(sqlQuery);
+//			pstmt.setString(1, profile.getEmail());
+//			ResultSet rs = pstmt.executeQuery();
+//			if(rs.next()) {
+//				if(rs.getString("email").equals(profile.getEmail())) {
+//					throw new PgsqlProfileBusinessException("Email already exists.");
+//				}
+//			}
 			
-			sqlQuery = " INSERT INTO \"PROFILES\"(name, email, birth_year, gender, user_id) VALUES (?, ?, ?, ?, ?)";
-			pstmt = db.getConnection().prepareStatement(sqlQuery,
+			String sqlQuery = " INSERT INTO \"PROFILES\"(name, email, birth_year, gender, user_id) VALUES (?, ?, ?, ?, ?)";
+			PreparedStatement pstmt = db.getConnection().prepareStatement(sqlQuery,
 					Statement.RETURN_GENERATED_KEYS);
 			pstmt.setString(1, profile.getName());
 			pstmt.setString(2, profile.getEmail());
@@ -134,20 +134,20 @@ public class PgsqlProfileDAO {
 						}
 					}
 					r.close();
-					rs.close();
+//					rs.close();
 					pstmt.close();
 					db.close();
 					
 					return addedProfile;
 					
 				}else {
-					rs.close();
+//					rs.close();
 					pstmt.close();
 					db.close();
 					throw new PgsqlProfileBusinessException("Unable to retrieve added profile.");
 				}
 			}else {
-				rs.close();
+//				rs.close();
 				pstmt.close();
 				db.close();
 				throw new PgsqlProfileBusinessException("Profile not added.");

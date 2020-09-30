@@ -121,6 +121,7 @@ public class PgsqlUserDAO{
 					throw new PgsqlUserBusinessException("Username already exists.");
 				}
 			}
+	
 			
 			// Insert new user in the USERS table
 			Role role = null;
