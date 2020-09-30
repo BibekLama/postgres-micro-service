@@ -129,10 +129,15 @@ public class PgsqlUserDAO{
 	
 			
 			// Insert new user in the USERS table
-			Role role = null;
+			Role role = new Role();
 			if(user.getRole() != null) {
 				role = roleDAO.getRoleByName(user.getRole().getRole());
 			}
+			
+			if(role == null) {
+				role = roleDAO.getRoleByName("User");
+			}
+			
 			User addedUser = null;
 			if(role != null) {
 				String sqlQuery1 = "INSERT INTO \"USERS\" (username, password, role_id) VALUES (?, ?, ?)";

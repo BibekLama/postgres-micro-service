@@ -3,6 +3,7 @@ package fr.epita.pgsql.datamodel;
 public class Role {
 	private long role_id;
 	private String role;
+	
 	public long getRole_id() {
 		return role_id;
 	}
